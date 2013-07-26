@@ -61,10 +61,10 @@ namespace NodeSelect  {
 
 		public ManeuverNode activeNode = null;
 		public ManeuverNode lastActiveNode = null;
-		private Rect windowPosition = new Rect(Screen.width / 6*3, 10, 230, 250);
+		private Rect windowPosition = new Rect(Screen.width / 6*3, 10, 260, 250);
 
-		private bool bClose = false;
-		private bool bHidden = false;
+		//private bool bClose = false;
+		//private bool bHidden = false;
 
 		private string nsT = "0";
 		private string nsX = "0";
@@ -148,6 +148,7 @@ namespace NodeSelect  {
 				}
 
 				// Setting hide key
+				/*
 				try {
 					string cfgHideKey = cfg.GetValue<String> ("hideKey", "undefined");
 					if (cfgHideKey.Equals ("undefined")) {
@@ -161,6 +162,7 @@ namespace NodeSelect  {
 					hideKey = KeyCode.I;
 					Debug.Log ("Hide key set through exception");
 				}
+				*/
 			}
 		}
 		//public void ClockUpdate ()
@@ -416,7 +418,7 @@ namespace NodeSelect  {
 			GUILayout.Label ("Pgd",GUILayout.Width (30));
 			//GUILayout.FlexibleSpace();
 			GUI.backgroundColor = Color.green;
-			nsZ = GUILayout.TextField (nsZ,GUILayout.Width (40));
+			nsZ = GUILayout.TextField (nsZ,GUILayout.Width (90));
 			GUI.backgroundColor = defbcolor;
 			GUILayout.Label ("m/s",GUILayout.Width (30));
 			bPm = GUILayout.Button ("-");
@@ -431,7 +433,7 @@ namespace NodeSelect  {
 			GUILayout.Label ("Rad",GUILayout.Width (30));
 			//GUILayout.FlexibleSpace();
 			GUI.backgroundColor = Color.cyan;
-			nsX = GUILayout.TextField (nsX,GUILayout.Width (40));
+			nsX = GUILayout.TextField (nsX,GUILayout.Width (90));
 			GUI.backgroundColor = defbcolor;
 			GUILayout.Label ("m/s",GUILayout.Width (30));
 			bRm = GUILayout.Button ("-");
@@ -443,7 +445,7 @@ namespace NodeSelect  {
 			GUILayout.BeginHorizontal ();
 			GUILayout.Label ("Nml",GUILayout.Width (30));
 			GUI.backgroundColor = Color.magenta;
-			nsY = GUILayout.TextField (nsY,GUILayout.Width (40));
+			nsY = GUILayout.TextField (nsY,GUILayout.Width (90));
 			GUI.backgroundColor = defbcolor;
 			GUILayout.Label ("m/s",GUILayout.Width (30));
 			bNm = GUILayout.Button ("-");
