@@ -29,7 +29,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-v1.2 
+v1.2 26.7.2013
 - Keep open tickbox to keep window open even if node closes
 - Patched conics buttons
 - Lots of new buttons
@@ -56,8 +56,16 @@ namespace NodeSelect  {
 
 		public PluginConfiguration cfg;
 		private bool cfgLoaded = false;
-		public Dictionary<ManeuverNode,PatchedConicRenderer> D1 = new Dictionary<ManeuverNode,PatchedConicRenderer>();
-		public Dictionary<ManeuverNode,PatchRendering> D2 = new Dictionary<ManeuverNode,PatchRendering>();
+
+		// public Dictionary<ManeuverNode,PatchedConicRenderer> D1 = new Dictionary<ManeuverNode,PatchedConicRenderer>();
+		// public Dictionary<ManeuverNode,PatchRendering> D2 = new Dictionary<ManeuverNode,PatchRendering>();
+
+		// Attempting to improve stability
+		public Vessel vesselActive = null;
+		public List<ManeuverNode> listNodes = new List<ManeuverNode> ();
+		public List<PatchedConicRenderer> listPatchedConicRenderers = new List<PatchedConicRenderer> ();
+		public List<PatchRendering> listPatchRenderings = new List<PatchRendering> ();
+
 
 		public ManeuverNode activeNode = null;
 		public ManeuverNode lastActiveNode = null;
@@ -72,7 +80,7 @@ namespace NodeSelect  {
 		private string nsZ = "0";
 		//private string conicsMode = "3";
 		private KeyCode cycleKey;
-		private KeyCode hideKey;
+		//private KeyCode hideKey;
 
 		private bool keepOpen = false;
 
@@ -214,116 +222,101 @@ namespace NodeSelect  {
 		}
 		public void OnGUI ()
 		{
-			if ((activeNode != null || keepOpen) && IsEnabled) {
+			if ((activeNode != null || keepOpen) && lastActiveNode != null && IsEnabled) {
 				drawGUI();
 			}
 		}
+
+		// This function is called when the "O" key is pressed.
+		// It opens a gizmo or cycles through available ones.
 		public void EnableGizmo ()
-		{
-			foreach (var pair in D1) {
-				// Check for removed nodes
-				if (FlightGlobals.ActiveVessel.patchedConicSolver.maneuverNodes.Contains (pair.Key) == false) {
-					//Debug.Log ("Removing node");
-					D1.Remove (pair.Key);
-					D2.Remove (pair.Key);
-					EnableGizmo (); // Do the function again, since you shouldn't modify a list while iterating through it..
-					return;
+		{	
+			// First check if any nodes has been deleted
+			List<ManeuverNode> tmpNodes = new List<ManeuverNode> (listNodes);
+			foreach (ManeuverNode node in tmpNodes) {
+				if (FlightGlobals.ActiveVessel.patchedConicSolver.maneuverNodes.Contains (node) == false) {
+					if (lastActiveNode == node) {
+						lastActiveNode = null;
+					}
+					if (activeNode == node) {
+						activeNode = null;
+					}
+
+					int index = listNodes.IndexOf (node);
+					listNodes.RemoveAt (index);
+					listPatchedConicRenderers.RemoveAt (index);
+					listPatchRenderings.RemoveAt (index);
 				}
 			}
-			if (D1.Keys.Count == 0) { // Nothing we can do here
+		
+			if (listNodes.Count == 0) {
 				activeNode = null;
 				lastActiveNode = null;
-				return;
-			}
-			ManeuverNode newNode = null;
+			} else {
 
-			if (activeNode == null) { // No node selected currently
-				if (lastActiveNode != null) { // But there was one previously..
-					if (FlightGlobals.ActiveVessel.patchedConicSolver.maneuverNodes.Contains (lastActiveNode) == false) {
-						// But it doesn't exist anymore, lets just choose the first one on the list
-						newNode = D1.Keys.ElementAt (0);
-						//Debug.Log ("Node has been destroyed");
-					}
-					else { // Lucky us, the node still exists..
-						newNode = lastActiveNode;
-					}
-				}
-				else {
-					newNode = D1.Keys.ElementAt (0);
-				}
-			}
-			else { // There's a node selected currently
-				//Debug.Log ("NODE SELECTED ATM");
-				if (D1.Keys.Count > 1) { // More than one, we can cycle through them
-					//Debug.Log ("CYCLING");
-					bool getNext = false;
-					ManeuverNode firstNode = null;
-					foreach (ManeuverNode mn in D1.Keys) { 
-						if (firstNode == null) {
-							firstNode = mn;
+				if (activeNode == null && lastActiveNode == null) {
+					activeNode = listNodes [0];
+				} else if (activeNode == null && lastActiveNode != null) {
+					activeNode = lastActiveNode;
+				} else if (activeNode != null) {
+					if (listNodes.Count == 1) {
+						return;
+					} 
+					else {
+						int nextIndex = listNodes.IndexOf (activeNode) +1;
+						if (nextIndex >= listNodes.Count) {
+							nextIndex = 0;
 						}
-						if (getNext == true) {
-							newNode = mn;
-							//Debug.Log ("NEWNODE FOUND");
-							break;
-						}
-						if (mn == activeNode) {
-							getNext = true;
-							//Debug.Log ("ACTIVE NODE FOUND");
-						}
+						Debug.Log ("Nextindex: " + nextIndex.ToString ());
+						activeNode.DetachGizmo ();
+						activeNode = listNodes [nextIndex];
 					}
-					if (newNode == null) {
-						//Debug.Log ("NO NEWNODE FOUND, SELECTING firstNode");
-						newNode = firstNode;
-					}
-					activeNode.DetachGizmo (); // Disable the old gizmo
 				}
-				else {
-					return; // Nothing to do here, only one node and its active
-				}
+
+				int index = listNodes.IndexOf (activeNode);
+				activeNode.AttachGizmo(MapView.ManeuverNodePrefab,listPatchedConicRenderers[index],listPatchRenderings[index]);
+				lastActiveNode = activeNode;
+
+				nsT = activeNode.UT.ToString ();
+				nsX = activeNode.DeltaV.x.ToString ();
+				nsY = activeNode.DeltaV.y.ToString ();
+				nsZ = activeNode.DeltaV.z.ToString ();
 			}
-			// Just to be sure, we don't want the newNode to have any open gizmos..
-			if (newNode.attachedGizmo != null) {
-				newNode.DetachGizmo ();
-			}
-			newNode.AttachGizmo(MapView.ManeuverNodePrefab,D1[newNode],D2[newNode]);
-			activeNode = newNode;
-			lastActiveNode = newNode;
-
-			//ndX = newNode.DeltaV.x;
-			//ndY = newNode.DeltaV.y;
-			//ndZ = newNode.DeltaV.z;
-			nsT = newNode.UT.ToString ();
-			nsX = newNode.DeltaV.x.ToString ();
-			nsY = newNode.DeltaV.y.ToString ();
-			nsZ = newNode.DeltaV.z.ToString ();
-
-
 		}
+
+		// This function searches for open gizmos. 
 		public void CheckForGizmos ()
-		{
-			//Debug.Log ("Backing up ");
+		{	
 			activeNode = null;
-			foreach (ManeuverNode mn in FlightGlobals.ActiveVessel.patchedConicSolver.maneuverNodes) {
-				if (mn.attachedGizmo != null) {
+			// If vessel has changed, remove all old references
+			if (FlightGlobals.ActiveVessel != vesselActive) {
+				vesselActive = FlightGlobals.ActiveVessel;
+				listNodes = new List<ManeuverNode> ();
+				listPatchedConicRenderers = new List<PatchedConicRenderer> ();
+				listPatchRenderings = new List<PatchRendering> ();
+				lastActiveNode = null;
+			}
+
+			// Loop through existing nodes. If we see an open gizmo, save it.
+			foreach (ManeuverNode node in FlightGlobals.ActiveVessel.patchedConicSolver.maneuverNodes) {
+				if (node.attachedGizmo != null) {
 					if (activeNode == null) {
-						activeNode = mn;
-						lastActiveNode = mn;
-					    if (D1.ContainsKey (mn) == false) {
-							D1[mn] = mn.attachedGizmo.renderer;
-							D2[mn] = mn.attachedGizmo.pr;
+						activeNode = node;
+						lastActiveNode = node;
+						if (!listNodes.Contains (node)) {
+							listNodes.Add (node);
+							listPatchedConicRenderers.Add (node.attachedGizmo.renderer);
+							listPatchRenderings.Add (node.attachedGizmo.pr);
 						}
 					}
-					else { // Multiple active nodes? Better safe than sorry
-						mn.DetachGizmo (); // Kill it with fire!!
+					// Just in case there are more than one active node, remove it.
+					else {
+						node.DetachGizmo ();
 					}
 				}
-			} 
-			// Keep window open ..
-			//if (activeNode == null && lastActiveNode != null) {
-			//	activeNode = lastActiveNode;
-			//}
+			}
 		}
+
 		public void drawGUI ()
 		{
 			GUI.skin = HighLogic.Skin;
@@ -333,12 +326,14 @@ namespace NodeSelect  {
 
 		public void drawWindow (int id)
 		{
+			//Debug.Log ("Draw");
 			double ndT;
 			double ndX;
 			double ndY;
 			double ndZ;
 
 			// If mouse events have changed the gizmo, update our string values
+			//Debug.Log ("Try");
 			try {
 				ndT = Convert.ToDouble (nsT);
 				ndX = Convert.ToDouble (nsX);
@@ -354,6 +349,7 @@ namespace NodeSelect  {
 
 				//Debug.Log ("Invalid chars in menu");
 			}
+			//Debug.Log ("ok");
 
 			if (ndT != lastActiveNode.UT) {
 				nsT = lastActiveNode.UT.ToString ();
