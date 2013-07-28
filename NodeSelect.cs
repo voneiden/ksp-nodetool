@@ -29,6 +29,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+v1.2b 28.7.2013
+- Fixed bug when switching vessels that caused multiple instances of the plugin to run
+- Rewrote half of the code while searching to the bug. Durr.. at least the code is easier to read now.
+
 v1.2 26.7.2013
 - Keep open tickbox to keep window open even if node closes
 - Patched conics buttons
@@ -128,7 +132,7 @@ namespace NodeSelect  {
 		
 		public void Awake ()
 		{
-			DontDestroyOnLoad (this);
+			//DontDestroyOnLoad (this);
 			CancelInvoke ();
 			//InvokeRepeating ("ClockUpdate",0.2F,0.2F);
 			Debug.Log ("NodeFreeze is alive");
@@ -192,12 +196,6 @@ namespace NodeSelect  {
 				if (Input.GetKeyDown (cycleKey))
 				{
 					EnableGizmo ();
-					/*
-					if (backupNode != null && backupNode.attachedGizmo == null) {
-						backupNode.AttachGizmo (MapView.ManeuverNodePrefab,backupRenderer,backupPR);
-						Debug.Log ("Reattached gizmo");
-					}
-					*/
 
 				}
 				//if (Input.GetKeyDown (hideKey)) {
@@ -232,6 +230,13 @@ namespace NodeSelect  {
 		public void EnableGizmo ()
 		{	
 			// First check if any nodes has been deleted
+			Debug.Log ("Enabling gizmo");
+			if (activeNode != null) {
+				Debug.Log ("Active node not null");
+			} else {
+				Debug.Log ("Active node null");
+			}
+
 			List<ManeuverNode> tmpNodes = new List<ManeuverNode> (listNodes);
 			foreach (ManeuverNode node in tmpNodes) {
 				if (FlightGlobals.ActiveVessel.patchedConicSolver.maneuverNodes.Contains (node) == false) {
